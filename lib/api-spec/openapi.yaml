@@ -1,0 +1,864 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Linguastar API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: books
+    description: Book store operations
+  - name: purchases
+    description: Purchase operations
+  - name: reading-progress
+    description: Reading progress tracking
+  - name: admin
+    description: Admin operations
+  - name: analytics
+    description: Analytics operations
+  - name: auth
+    description: Auth operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /books:
+    get:
+      operationId: listBooks
+      tags: [books]
+      summary: List all books with optional filters
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: featured
+          in: query
+          schema:
+            type: string
+        - name: language
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of books
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Book"
+    post:
+      operationId: createBook
+      tags: [books]
+      summary: Create a new book (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookBody"
+      responses:
+        "201":
+          description: Book created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /books/{id}:
+    get:
+      operationId: getBook
+      tags: [books]
+      summary: Get a single book by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Book details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateBook
+      tags: [books]
+      summary: Update a book (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBookBody"
+      responses:
+        "200":
+          description: Book updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteBook
+      tags: [books]
+      summary: Delete a book (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /books/{id}/content:
+    get:
+      operationId: getBookContent
+      tags: [books]
+      summary: Get protected book content (must own book)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Book content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookContent"
+        "403":
+          description: Not purchased
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /store/featured:
+    get:
+      operationId: getFeaturedBooks
+      tags: [books]
+      summary: Get featured books for homepage
+      responses:
+        "200":
+          description: Featured books
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Book"
+
+  /store/categories:
+    get:
+      operationId: getCategories
+      tags: [books]
+      summary: List categories with book counts
+      responses:
+        "200":
+          description: Categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+
+  /store/bestsellers:
+    get:
+      operationId: getBestsellers
+      tags: [books]
+      summary: Get bestselling books
+      responses:
+        "200":
+          description: Bestsellers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Book"
+
+  /purchases:
+    get:
+      operationId: listPurchases
+      tags: [purchases]
+      summary: List current user purchases
+      responses:
+        "200":
+          description: User purchases
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Purchase"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createPurchase
+      tags: [purchases]
+      summary: Purchase a book
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePurchaseBody"
+      responses:
+        "201":
+          description: Purchase recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Purchase"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /reading-progress:
+    get:
+      operationId: listReadingProgress
+      tags: [reading-progress]
+      summary: Get all reading progress for current user
+      responses:
+        "200":
+          description: Reading progress list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReadingProgress"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /reading-progress/{bookId}:
+    get:
+      operationId: getReadingProgress
+      tags: [reading-progress]
+      summary: Get reading progress for a specific book
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Reading progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadingProgress"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateReadingProgress
+      tags: [reading-progress]
+      summary: Update reading progress
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateReadingProgressBody"
+      responses:
+        "200":
+          description: Progress updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadingProgress"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/users:
+    get:
+      operationId: adminListUsers
+      tags: [admin]
+      summary: List all users (admin only)
+      responses:
+        "200":
+          description: All users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserRecord"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/purchases:
+    get:
+      operationId: adminListPurchases
+      tags: [admin]
+      summary: List all purchases (admin only)
+      responses:
+        "200":
+          description: All purchases
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Purchase"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analytics/overview:
+    get:
+      operationId: getAnalyticsOverview
+      tags: [analytics]
+      summary: Get analytics overview (admin only)
+      responses:
+        "200":
+          description: Analytics overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsOverview"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analytics/activity:
+    get:
+      operationId: getRecentActivity
+      tags: [analytics]
+      summary: Get recent activity feed (admin only)
+      responses:
+        "200":
+          description: Recent activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /me/role:
+    get:
+      operationId: getMyRole
+      tags: [auth]
+      summary: Get current user role
+      responses:
+        "200":
+          description: User role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    Book:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        author:
+          type: string
+        description:
+          type: string
+        coverUrl:
+          type: ["string", "null"]
+        price:
+          type: number
+        category:
+          type: string
+        language:
+          type: string
+        level:
+          type: string
+        isFeatured:
+          type: boolean
+        isBestseller:
+          type: boolean
+        totalPages:
+          type: integer
+        rating:
+          type: number
+        reviewCount:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - title
+        - author
+        - description
+        - price
+        - category
+        - language
+        - level
+        - isFeatured
+        - isBestseller
+        - totalPages
+        - rating
+        - reviewCount
+        - createdAt
+        - updatedAt
+
+    CreateBookBody:
+      type: object
+      properties:
+        title:
+          type: string
+        author:
+          type: string
+        description:
+          type: string
+        coverUrl:
+          type: ["string", "null"]
+        price:
+          type: number
+        category:
+          type: string
+        language:
+          type: string
+        level:
+          type: string
+        isFeatured:
+          type: boolean
+        isBestseller:
+          type: boolean
+        totalPages:
+          type: integer
+        content:
+          type: string
+      required:
+        - title
+        - author
+        - description
+        - price
+        - category
+        - language
+        - level
+        - totalPages
+        - content
+
+    UpdateBookBody:
+      type: object
+      properties:
+        title:
+          type: string
+        author:
+          type: string
+        description:
+          type: string
+        coverUrl:
+          type: ["string", "null"]
+        price:
+          type: number
+        category:
+          type: string
+        language:
+          type: string
+        level:
+          type: string
+        isFeatured:
+          type: boolean
+        isBestseller:
+          type: boolean
+        totalPages:
+          type: integer
+        content:
+          type: string
+
+    BookContent:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        content:
+          type: string
+        totalPages:
+          type: integer
+      required:
+        - id
+        - title
+        - content
+        - totalPages
+
+    Category:
+      type: object
+      properties:
+        name:
+          type: string
+        count:
+          type: integer
+        icon:
+          type: string
+      required:
+        - name
+        - count
+        - icon
+
+    Purchase:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        bookId:
+          type: integer
+        amount:
+          type: number
+        status:
+          type: string
+        createdAt:
+          type: string
+        book:
+          $ref: "#/components/schemas/Book"
+      required:
+        - id
+        - userId
+        - bookId
+        - amount
+        - status
+        - createdAt
+        - book
+
+    CreatePurchaseBody:
+      type: object
+      properties:
+        bookId:
+          type: integer
+        amount:
+          type: number
+      required:
+        - bookId
+        - amount
+
+    ReadingProgress:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        bookId:
+          type: integer
+        currentPage:
+          type: integer
+        totalPages:
+          type: integer
+        percentComplete:
+          type: number
+        lastReadAt:
+          type: string
+        book:
+          $ref: "#/components/schemas/Book"
+      required:
+        - id
+        - userId
+        - bookId
+        - currentPage
+        - totalPages
+        - percentComplete
+        - lastReadAt
+        - book
+
+    UpdateReadingProgressBody:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - currentPage
+
+    UserRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          type: ["string", "null"]
+        role:
+          type: string
+        createdAt:
+          type: string
+        purchaseCount:
+          type: integer
+        totalSpent:
+          type: number
+      required:
+        - id
+        - email
+        - role
+        - createdAt
+        - purchaseCount
+        - totalSpent
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          type: ["string", "null"]
+        role:
+          type: string
+        avatarUrl:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - email
+        - role
+        - createdAt
+
+    RoleResponse:
+      type: object
+      properties:
+        role:
+          type: string
+        isAdmin:
+          type: boolean
+      required:
+        - role
+        - isAdmin
+
+    AnalyticsOverview:
+      type: object
+      properties:
+        totalRevenue:
+          type: number
+        totalUsers:
+          type: integer
+        totalBooks:
+          type: integer
+        totalPurchases:
+          type: integer
+        activeUsers:
+          type: integer
+        revenueThisMonth:
+          type: number
+        newUsersThisMonth:
+          type: integer
+        topBooks:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopBook"
+      required:
+        - totalRevenue
+        - totalUsers
+        - totalBooks
+        - totalPurchases
+        - activeUsers
+        - revenueThisMonth
+        - newUsersThisMonth
+        - topBooks
+
+    TopBook:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        salesCount:
+          type: integer
+        revenue:
+          type: number
+      required:
+        - id
+        - title
+        - salesCount
+        - revenue
+
+    ActivityItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        description:
+          type: string
+        userId:
+          type: ["string", "null"]
+        bookId:
+          type: ["integer", "null"]
+        amount:
+          type: ["number", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - type
+        - description
+        - createdAt
